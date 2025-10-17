@@ -10,6 +10,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Show repo tree (debug)
+        run: |
+          echo "== repo root =="
+          pwd
+          echo "== tree =="
+          ls -la
+          echo "== find application.fam (any depth) =="
+          find . -type f -iname "application.fam" -print || true
+
       - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
@@ -26,18 +35,29 @@ jobs:
           pip install ufbt
           ufbt --version
 
-      - name: Locate app directory
+      - name: Locate app directory (robust)
         id: findapp
         shell: bash
         run: |
           set -e
-          APP_DIR="$(git ls-files | grep -E '^.+/application\.fam$' | sed 's|/application\.fam$||' | head -n1)"
+          # Try to find application.fam anywhere (case-insensitive)
+          APP_DIR="$(find . -type f -iname 'application.fam' | head -n1 | sed 's|/[^/]*$||')"
           if [ -z "$APP_DIR" ]; then
-            echo "Could not find application.fam in repo. Make sure your app folder contains application.fam."
-            exit 1
+            # Fallback: if ./erhu_tuner exists, use it
+            if [ -d "./erhu_tuner" ]; then
+              APP_DIR="./erhu_tuner"
+            else
+              echo "ERROR: Could not find application.fam and no ./erhu_tuner folder present."
+              echo "Repo tree for debugging:"
+              find . -maxdepth 3 -print
+              exit 1
+            fi
           fi
-          echo "App dir: $APP_DIR"
+          echo "Using app dir: $APP_DIR"
           echo "appdir=$APP_DIR" >> $GITHUB_OUTPUT
+          # Show its contents
+          echo "== contents of app dir =="
+          ls -la "$APP_DIR"
 
       - name: Build app
         shell: bash
