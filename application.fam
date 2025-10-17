@@ -1,0 +1,15 @@
+App(
+    appid="erhu_tuner",
+    name="Erhu Tuner",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="erhu_tuner_app",
+    cdefines=["APP_ERHU_TUNER"],
+    requires=["gui"],
+    fap_icon="tuning_fork_icon.png",
+    fap_category="Media",
+    stack_size=2 * 1024,
+    order=21,
+    fap_author="@you",
+    fap_weburl="",
+    fap_version="1.2.0",
+)
