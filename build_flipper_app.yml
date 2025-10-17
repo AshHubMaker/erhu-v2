@@ -1,0 +1,65 @@
+name: Build Flipper App
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build gcc-arm-none-eabi
+
+      - name: Install ufbt
+        run: |
+          python -m pip install --upgrade pip
+          pip install ufbt
+          ufbt --version
+
+      - name: Locate app directory
+        id: findapp
+        shell: bash
+        run: |
+          set -e
+          APP_DIR="$(git ls-files | grep -E '^.+/application\.fam$' | sed 's|/application\.fam$||' | head -n1)"
+          if [ -z "$APP_DIR" ]; then
+            echo "Could not find application.fam in repo. Make sure your app folder contains application.fam."
+            exit 1
+          fi
+          echo "App dir: $APP_DIR"
+          echo "appdir=$APP_DIR" >> $GITHUB_OUTPUT
+
+      - name: Build app
+        shell: bash
+        working-directory: ${{ steps.findapp.outputs.appdir }}
+        run: |
+          ufbt update || true
+          ufbt build
+          echo "Search for .fap after build:"
+          find . ~/.ufbt -type f -name "*.fap" -print || true
+
+      - name: Collect .fap artifacts
+        shell: bash
+        run: |
+          set -e
+          mkdir -p artifact_out
+          find . ~/.ufbt -type f -name "*.fap" -print -exec cp -v {} artifact_out/ \; || true
+          echo "Collected files:"
+          ls -la artifact_out || true
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: erhu_tuner_build
+          path: artifact_out/**
+          if-no-files-found: error
